@@ -75,7 +75,7 @@ void oled_setup() {
     render_on_display(ssd, &frame_area);     
 }
 
-void buttons_setup() {
+void gpio_setup() {
   gpio_init(BUTTON_B);
   gpio_set_dir(BUTTON_B, GPIO_IN);
   gpio_pull_up(BUTTON_B);
@@ -85,6 +85,11 @@ int main()
 {
     stdio_init_all();
     oled_setup();
+    gpio_setup();
+    
+    int button_b_state = 0;
+    // button_b_state = gpio_get(BUTTON_B);
+    gpio_put(BUTTON_B, 1);
 
     char *text[] = {
         "teste",
