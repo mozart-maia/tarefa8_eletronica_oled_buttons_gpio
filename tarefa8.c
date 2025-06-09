@@ -117,11 +117,8 @@ int main()
     oled_setup();
     gpio_setup();
 
-    int a,b,c,d,e,f,g,h;
-    
+    int n_read;    
     int button_b_state;
-    
-    // gpio_put(BUTTON_B, 1);
 
     char saida_oled[20];
     sprintf(saida_oled, "%f", 42.00);
@@ -129,7 +126,6 @@ int main()
         "VAL",
         saida_oled
     };
-    // printf("texto:  \n");
     show_message_oled(text,2);
     
     while (true) {
@@ -143,8 +139,8 @@ int main()
                 // clock
                 gpio_put(CLK_PIN, 1);
                 // valor lido da saida serial
-                a = gpio_get(SERIAL_IN_PIN);
-                decimal_number += a * (pow(2, (double)i));
+                n_read = gpio_get(SERIAL_IN_PIN);
+                decimal_number += n_read * (pow(2, (double)i));
                 gpio_put(CLK_PIN, 0);
             }
             // modo de leitura serial desativado
