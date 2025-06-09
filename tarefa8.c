@@ -83,7 +83,7 @@ void oled_setup() {
 void gpio_setup() {
   gpio_init(BUTTON_B);
   gpio_set_dir(BUTTON_B, GPIO_IN);
-  gpio_pull_down(BUTTON_B);
+  gpio_pull_up(BUTTON_B);
 
   /* De acordo com o datasheet do SN74HC166 :
         The SNx4HC166 is a parallel-load 8-bit shift register with asynchronous clear ( CLR). This parallel-in or serial-in,
@@ -119,31 +119,45 @@ int main()
 
     int a,b,c,d,e,f,g,h;
     
-    int button_b_state = 0;
+    int button_b_state;
     
     // gpio_put(BUTTON_B, 1);
 
+    char saida_oled[20];
+    sprintf(saida_oled, "%f", 42.00);
     char *text[] = {
         "VAL",
-        "10"
-        };
+        saida_oled
+    };
     // printf("texto:  \n");
-    show_message_oled(text,1);
+    show_message_oled(text,2);
     
     while (true) {
         button_b_state = gpio_get(BUTTON_B);
-        if (button_b_state) {
+        if (button_b_state == 0) {
             double decimal_number = 0;
             printf("botao pressionado!\n");
+            // modo de leitura serial ativado
             gpio_put(LOAD_PIN, true);
             for (int i=0; i < 9; i++){
+                // clock
                 gpio_put(CLK_PIN, 1);
+                // valor lido da saida serial
                 a = gpio_get(SERIAL_IN_PIN);
                 decimal_number += a * (pow(2, (double)i));
                 gpio_put(CLK_PIN, 0);
             }
-            gpio_put(LOAD_PIN, true);
-            printf("numero lido: %d" , decimal_number);            
+            // modo de leitura serial desativado
+            gpio_put(LOAD_PIN, false);
+            printf("numero lido: %d" , (int)decimal_number);
+            char number_str[20];
+            sprintf(number_str, "%d", (int)decimal_number);
+            char *saida_oled[] = {
+                "VAL",
+                number_str
+            };
+            show_message_oled(saida_oled,2);           
+                        
         }       
         sleep_ms(100);
     }
