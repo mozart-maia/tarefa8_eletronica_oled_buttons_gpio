@@ -9,6 +9,37 @@
 #include <stdbool.h>
 #include <math.h>
 
+#include "hardware/pll.h"
+#include "hardware/clocks.h"
+#include "hardware/structs/pll.h"
+#include "hardware/structs/clocks.h"
+
+void measure_freqs(void) {
+    uint f_pll_sys = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_PLL_SYS_CLKSRC_PRIMARY);
+    uint f_pll_usb = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_PLL_USB_CLKSRC_PRIMARY);
+    uint f_rosc = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_ROSC_CLKSRC);
+    uint f_clk_sys = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_SYS);
+    uint f_clk_peri = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_PERI);
+    uint f_clk_usb = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_USB);
+    uint f_clk_adc = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_ADC);
+#ifdef CLOCKS_FC0_SRC_VALUE_CLK_RTC
+    uint f_clk_rtc = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_RTC);
+#endif
+
+    printf("pll_sys  = %dkHz\n", f_pll_sys);
+    printf("pll_usb  = %dkHz\n", f_pll_usb);
+    printf("rosc     = %dkHz\n", f_rosc);
+    printf("clk_sys  = %dkHz\n", f_clk_sys);
+    printf("clk_peri = %dkHz\n", f_clk_peri);
+    printf("clk_usb  = %dkHz\n", f_clk_usb);
+    printf("clk_adc  = %dkHz\n", f_clk_adc);
+#ifdef CLOCKS_FC0_SRC_VALUE_CLK_RTC
+    printf("clk_rtc  = %dkHz\n", f_clk_rtc);
+#endif
+
+    // Can't measure clk_ref / xosc as it is the ref
+}
+
 #define I2C_SDA_PIN 14 
 #define I2C_SCL_PIN 15
 #define OLED_WIDTH 128 
@@ -16,7 +47,7 @@
 
 #define BUTTON_B 6
 
-#define LOAD_PIN 28
+#define LOAD_PIN 8
 #define CLK_PIN 17
 #define SERIAL_IN_PIN 16
 
@@ -98,17 +129,20 @@ void gpio_setup() {
   // pino para alternar entre função de shift output (1) e load input (0)
   gpio_init(LOAD_PIN);
   gpio_set_dir(LOAD_PIN, GPIO_OUT);
-  gpio_pull_down(LOAD_PIN);
+//   gpio_pull_down(LOAD_PIN);
+  gpio_put(LOAD_PIN, false);
 
   // pino do clock para alternar no ci SN74HC166
   gpio_init(CLK_PIN);
   gpio_set_dir(CLK_PIN, GPIO_OUT);
-  gpio_pull_down(CLK_PIN);
+  gpio_put(CLK_PIN, false);
+//   gpio_pull_down(CLK_PIN);
 
   // pino que vai receber o sinal serial a cada pulso de clock no SN74HC166
   gpio_init(SERIAL_IN_PIN);
   gpio_set_dir(SERIAL_IN_PIN, GPIO_IN);
-  gpio_pull_down(SERIAL_IN_PIN);
+  gpio_put(SERIAL_IN_PIN, false);
+//   gpio_pull_down(SERIAL_IN_PIN);
 }
 
 int main()
@@ -116,6 +150,13 @@ int main()
     stdio_init_all();
     oled_setup();
     gpio_setup();
+
+    clock_configure(clk_sys,
+                    CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
+                    CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
+                    2 * MHZ,
+                    2 * MHZ);
+
 
     int n_read;    
     int button_b_state;
@@ -126,25 +167,35 @@ int main()
         "VAL",
         saida_oled
     };
-    show_message_oled(text,2);
+    show_message_oled(text,2);    
     
     while (true) {
         button_b_state = gpio_get(BUTTON_B);
         if (button_b_state == 0) {
-            double decimal_number = 0;
+            
+            double decimal_number = 0.0;
             printf("botao pressionado!\n");
+            gpio_put(LOAD_PIN, false);
+            gpio_put(CLK_PIN, true);
+            gpio_put(CLK_PIN, false);
+            
             // modo de leitura serial ativado
             gpio_put(LOAD_PIN, true);
-            for (int i=0; i < 9; i++){
+            // gpio_put(CLK_PIN, true);
+            printf("load pin : %d\n", gpio_get(LOAD_PIN));
+            for (int i=0; i < 8; i++){
                 // clock
-                gpio_put(CLK_PIN, 1);
+                sleep_ms(200);
+                gpio_put(CLK_PIN, true);
+                // gpio_put(CLK_PIN, true);
+                // int clock_gpio = gpio_get(CLK_PIN);
                 // valor lido da saida serial
                 n_read = gpio_get(SERIAL_IN_PIN);
                 decimal_number += n_read * (pow(2, (double)i));
-                printf("clock - %d \n", i);
-                printf("leitura do serial -  %d \n", n_read);
-                printf("numero ate agora - %f \n", decimal_number);
-                gpio_put(CLK_PIN, 0);
+                printf("i - %d | leitura do serial -  %d | clock_gpio - %d |  load_gpio - %d | soma: %f \n", i, n_read, gpio_get(LOAD_PIN), gpio_get(CLK_PIN), decimal_number);
+                // printf(" \n", n_read);
+                // printf("numero ate agora - %f \n", decimal_number);
+                gpio_put(CLK_PIN, false);
             }
             // modo de leitura serial desativado
             gpio_put(LOAD_PIN, false);
