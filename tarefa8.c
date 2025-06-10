@@ -141,6 +141,9 @@ int main()
                 // valor lido da saida serial
                 n_read = gpio_get(SERIAL_IN_PIN);
                 decimal_number += n_read * (pow(2, (double)i));
+                printf("clock - %d \n", i);
+                printf("leitura do serial -  %d \n", n_read);
+                printf("numero ate agora - %f \n", decimal_number);
                 gpio_put(CLK_PIN, 0);
             }
             // modo de leitura serial desativado
